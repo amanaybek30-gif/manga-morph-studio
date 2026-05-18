@@ -1,0 +1,18 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { Image as ImageIcon } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/dashboard/manga")({
+  component: () => (
+    <div className="p-6 sm:p-10 max-w-6xl">
+      <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">// Library</div>
+      <h1 className="font-display text-3xl font-bold mb-8">Generated Manga</h1>
+      <div className="glass-panel rounded-2xl p-12 text-center shadow-soft">
+        <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+          <ImageIcon className="h-6 w-6 text-primary" />
+        </div>
+        <h3 className="font-display text-xl font-semibold">No panels generated yet</h3>
+        <p className="text-muted-foreground text-sm mt-1">Create a story and queue generation to see your manga here.</p>
+      </div>
+    </div>
+  ),
+});
