@@ -14,16 +14,438 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      characters: {
+        Row: {
+          age: number | null
+          body_type: string | null
+          created_at: string
+          eye_color: string | null
+          gender: string | null
+          hair_color: string | null
+          hair_style: string | null
+          height: string | null
+          id: string
+          manga_style: string | null
+          name: string
+          outfit_style: string | null
+          personality: string | null
+          reference_image_url: string | null
+          skin_tone: string | null
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          body_type?: string | null
+          created_at?: string
+          eye_color?: string | null
+          gender?: string | null
+          hair_color?: string | null
+          hair_style?: string | null
+          height?: string | null
+          id?: string
+          manga_style?: string | null
+          name: string
+          outfit_style?: string | null
+          personality?: string | null
+          reference_image_url?: string | null
+          skin_tone?: string | null
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          body_type?: string | null
+          created_at?: string
+          eye_color?: string | null
+          gender?: string | null
+          hair_color?: string | null
+          hair_style?: string | null
+          height?: string | null
+          id?: string
+          manga_style?: string | null
+          name?: string
+          outfit_style?: string | null
+          personality?: string | null
+          reference_image_url?: string | null
+          skin_tone?: string | null
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "characters_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      generated_panels: {
+        Row: {
+          created_at: string
+          dialogue: string | null
+          id: string
+          image_url: string | null
+          panel_number: number
+          project_id: string
+          prompt: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dialogue?: string | null
+          id?: string
+          image_url?: string | null
+          panel_number: number
+          project_id: string
+          prompt?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dialogue?: string | null
+          id?: string
+          image_url?: string | null
+          panel_number?: number
+          project_id?: string
+          prompt?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_panels_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "manga_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      likes: {
+        Row: {
+          created_at: string
+          id: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "likes_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manga_projects: {
+        Row: {
+          art_style: string | null
+          camera_style: string | null
+          created_at: string
+          dialogue_density: string | null
+          id: string
+          mood: string | null
+          panel_count: number
+          progress: number
+          status: string
+          story_id: string
+          story_pacing: string | null
+          user_id: string
+          visual_intensity: string | null
+        }
+        Insert: {
+          art_style?: string | null
+          camera_style?: string | null
+          created_at?: string
+          dialogue_density?: string | null
+          id?: string
+          mood?: string | null
+          panel_count?: number
+          progress?: number
+          status?: string
+          story_id: string
+          story_pacing?: string | null
+          user_id: string
+          visual_intensity?: string | null
+        }
+        Update: {
+          art_style?: string | null
+          camera_style?: string | null
+          created_at?: string
+          dialogue_density?: string | null
+          id?: string
+          mood?: string | null
+          panel_count?: number
+          progress?: number
+          status?: string
+          story_id?: string
+          story_pacing?: string | null
+          user_id?: string
+          visual_intensity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manga_projects_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          story_id: string | null
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          story_id?: string | null
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          story_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          genre: string | null
+          id: string
+          is_public: boolean
+          status: string
+          story_text: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          id?: string
+          is_public?: boolean
+          status?: string
+          story_text?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          id?: string
+          is_public?: boolean
+          status?: string
+          story_text?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +572,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
