@@ -1,19 +1,14 @@
 import { Check } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
 const tiers = [
-  {
-    name: "Spark", price: "0", desc: "Try the engine.",
-    features: ["3 stories / month", "Up to 6 panels", "Watermarked exports", "Community gallery"],
-  },
-  {
-    name: "Mangaka", price: "19", desc: "For serious creators.", featured: true,
-    features: ["Unlimited stories", "Up to 60 panels / chapter", "HD exports, no watermark", "Character reference images", "Priority generation"],
-  },
-  {
-    name: "Studio", price: "49", desc: "For teams & publishers.",
-    features: ["Everything in Mangaka", "Collaborative projects", "API access", "Custom style training", "Dedicated support"],
-  },
+  { name: "Spark", price: "0", desc: "Try the engine.",
+    features: ["3 stories / month", "Up to 6 panels", "Watermarked exports", "Community gallery"] },
+  { name: "Mangaka", price: "19", desc: "For serious creators.", featured: true,
+    features: ["Unlimited stories", "Up to 60 panels / chapter", "HD exports, no watermark", "Character reference images", "Priority generation"] },
+  { name: "Studio", price: "49", desc: "For teams & publishers.",
+    features: ["Everything in Mangaka", "Collaborative projects", "API access", "Custom style training", "Dedicated support"] },
 ];
 
 export function Pricing() {
@@ -31,8 +26,8 @@ export function Pricing() {
           {tiers.map((t) => (
             <div
               key={t.name}
-              className={`relative glass rounded-2xl p-7 flex flex-col ${
-                t.featured ? "border-primary/40 glow-primary scale-[1.02]" : ""
+              className={`relative glass-panel rounded-2xl p-7 flex flex-col shadow-soft ${
+                t.featured ? "border-primary/40 glow-emerald scale-[1.02]" : ""
               }`}
             >
               {t.featured && (
@@ -56,16 +51,18 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Button
-                className={`mt-7 w-full ${
-                  t.featured
-                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow"
-                    : "glass border border-border hover:bg-white/5"
-                }`}
-                variant={t.featured ? "default" : "outline"}
-              >
-                {t.price === "0" ? "Start free" : "Choose " + t.name}
-              </Button>
+              <Link to="/auth">
+                <Button
+                  className={`mt-7 w-full ${
+                    t.featured
+                      ? "bg-primary hover:bg-primary/90 text-primary-foreground glow-emerald"
+                      : "border border-border hover:bg-accent"
+                  }`}
+                  variant={t.featured ? "default" : "outline"}
+                >
+                  {t.price === "0" ? "Start free" : "Choose " + t.name}
+                </Button>
+              </Link>
             </div>
           ))}
         </div>

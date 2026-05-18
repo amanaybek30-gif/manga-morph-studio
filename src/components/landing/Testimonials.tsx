@@ -1,7 +1,7 @@
 const quotes = [
-  { q: "I wrote a novel in college that no one ever read. MangaMorph turned chapter one into 30 panels overnight.", a: "Maya Chen", r: "Indie Author" },
-  { q: "Character consistency was always the wall. Reference images solved it. My OC finally looks like my OC.", a: "Devon Park", r: "Webtoon Artist" },
-  { q: "Our writing class uses MangaMorph as a storyboarding tool. Students stay engaged for hours.", a: "Prof. R. Sato", r: "Creative Writing" },
+  { q: "I wrote a novel in college that no one ever read. Habesha Manga turned chapter one into 30 panels overnight.", a: "Maya Chen", r: "Indie Author" },
+  { q: "Character consistency was always the wall. Reference images solved it — my OC finally looks like my OC.", a: "Devon Park", r: "Webtoon Artist" },
+  { q: "Our writing class uses Habesha Manga as a storyboarding tool. Students stay engaged for hours.", a: "Prof. R. Sato", r: "Creative Writing" },
 ];
 
 export function Testimonials() {
@@ -16,13 +16,13 @@ export function Testimonials() {
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {quotes.map((q) => (
-            <figure key={q.a} className="glass rounded-2xl p-6 flex flex-col">
+            <figure key={q.a} className="glass-panel rounded-2xl p-6 flex flex-col shadow-soft">
               <blockquote className="text-foreground/90 leading-relaxed flex-1">
                 <span className="text-primary text-3xl font-display leading-none">"</span>
                 {q.q}
               </blockquote>
-              <figcaption className="mt-6 flex items-center gap-3 pt-4 border-t border-white/5">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent" />
+              <figcaption className="mt-6 flex items-center gap-3 pt-4 border-t border-border">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-gold" />
                 <div>
                   <div className="font-semibold text-sm">{q.a}</div>
                   <div className="text-xs text-muted-foreground">{q.r}</div>
