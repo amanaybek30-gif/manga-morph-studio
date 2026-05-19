@@ -112,8 +112,8 @@ function NewStory() {
         status: "pending",
       });
 
-      toast.success("Story saved! Generation queued.");
-      nav({ to: "/dashboard/stories" });
+      toast.success("Story saved! Open it in Generated Manga to create panels.");
+      nav({ to: "/dashboard/manga" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
