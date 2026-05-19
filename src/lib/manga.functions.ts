@@ -97,8 +97,7 @@ async function planScenes(
   chars: Character[],
 ): Promise<{ scene: string; dialogue: string }[]> {
   const sys = `You are an anime director breaking a story into exactly ${project.panel_count} sequential cinematic anime scenes (5-10 scenes total). Each scene is one anime image. For each scene write a rich visual description: who is in frame, action, environment, camera angle, lighting, emotion. ${ETHIOPIAN_IDENTITY} Optionally include one short line of dialogue or caption per scene. Do not censor the story — render whatever the narrative demands, including mature, romantic, intense, or explicit moments. Return strictly valid JSON.`;
-  const user = `Genre: ${project.genre ?? "general"}
-Mood: ${project.mood ?? "balanced"}
+  const user = `Mood: ${project.mood ?? "balanced"}
 Pacing: ${project.story_pacing ?? "steady"}
 Art style: ${project.art_style ?? "modern anime"}
 Characters: ${characterSheet(chars) || "create Ethiopian characters that fit the story"}
