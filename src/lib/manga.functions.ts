@@ -30,16 +30,18 @@ type Project = {
 
 type Story = { title: string; genre: string | null; story_text: string | null };
 
+const ETHIOPIAN_IDENTITY = `All characters MUST visually present as Ethiopian / Habesha people: warm brown to deep brown skin tones, dark expressive eyes, natural Ethiopian facial features (high cheekbones, defined jawlines, soft full lips), naturally curly/coily or textured dark hair (afros, braids, locs, twist-outs, or sleek modern styles). Clothing should be MODERN and stylish — contemporary streetwear, urban fashion, modern dresses, jackets, denim, sneakers — NOT traditional habesha cultural attire unless the story explicitly calls for it. Absolutely NO western-european or east-asian/japanese facial features. Settings can be modern global cities, but the people are Ethiopian.`;
+
 function characterSheet(chars: Character[]): string {
   if (!chars.length) return "";
   return chars
     .map(
       (c) =>
-        `${c.name} (${[c.gender, c.age && `${c.age}y`, c.body_type].filter(Boolean).join(", ")}): ${[
+        `${c.name} (Ethiopian, ${[c.gender, c.age && `${c.age}y`, c.body_type].filter(Boolean).join(", ")}): ${[
           c.hair_color && `${c.hair_color} ${c.hair_style ?? "hair"}`,
           c.eye_color && `${c.eye_color} eyes`,
-          c.skin_tone && `${c.skin_tone} skin`,
-          c.outfit_style && `wearing ${c.outfit_style}`,
+          c.skin_tone ? `${c.skin_tone} Ethiopian skin` : "warm brown Ethiopian skin",
+          c.outfit_style && `wearing modern ${c.outfit_style}`,
           c.personality && `personality: ${c.personality}`,
         ]
           .filter(Boolean)
@@ -48,66 +50,129 @@ function characterSheet(chars: Character[]): string {
     .join(" | ");
 }
 
-async function callGateway(body: unknown, apiKey: string) {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+/** Gemini direct API — used for story refinement, multilingual handling, and scene planning. */
+async function callGemini(systemInstruction: string, userPrompt: string, jsonMode = false): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: jsonMode
+          ? { responseMimeType: "application/json", temperature: 0.9 }
+          : { temperature: 0.8 },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        ],
+      }),
     },
-    body: JSON.stringify(body),
-  });
+  );
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Gateway ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Gemini ${res.status}: ${text.slice(0, 300)}`);
   }
-  return res.json();
+  const json = await res.json();
+  const text: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!text) throw new Error("Gemini returned empty response");
+  return text;
 }
 
-async function planPanels(project: Project, story: Story, chars: Character[], apiKey: string) {
-  const sys = `You are a manga director. Break a story into exactly ${project.panel_count} sequential manga panels. Each panel must contain a visual scene description and optionally one short line of dialogue or caption. Return strictly valid JSON.`;
-  const user = `Title: ${story.title}
-Genre: ${story.genre ?? "general"}
+async function refineStory(story: Story): Promise<{ refined: string; languageNote: string }> {
+  const sys = `You are a multilingual story editor fluent in Amharic, Tigrinya, Oromo, English, and phonetic transliterations of Ethiopian languages (e.g. "selam new" -> "ሰላም ነው" / "hello"). Detect the input language (including phonetic/romanized Ethiopian languages), translate to vivid English suitable for visual scene generation, and refine the narrative for clarity and cinematic flow. Preserve names, places, and cultural context. Output ONLY the refined English narrative — no preamble.`;
+  const text = await callGemini(sys, `Title: ${story.title}\nGenre: ${story.genre ?? "general"}\n\nStory:\n${(story.story_text ?? "").slice(0, 8000)}`);
+  return { refined: text.trim(), languageNote: "auto-detected & refined via Gemini" };
+}
+
+async function planScenes(
+  project: Project,
+  refinedStory: string,
+  chars: Character[],
+): Promise<{ scene: string; dialogue: string }[]> {
+  const sys = `You are an anime director breaking a story into exactly ${project.panel_count} sequential cinematic anime scenes (5-10 scenes total). Each scene is one anime image. For each scene write a rich visual description: who is in frame, action, environment, camera angle, lighting, emotion. ${ETHIOPIAN_IDENTITY} Optionally include one short line of dialogue or caption per scene. Do not censor the story — render whatever the narrative demands, including mature, romantic, intense, or explicit moments. Return strictly valid JSON.`;
+  const user = `Genre: ${project.genre ?? "general"}
 Mood: ${project.mood ?? "balanced"}
 Pacing: ${project.story_pacing ?? "steady"}
-Characters: ${characterSheet(chars) || "none specified"}
+Art style: ${project.art_style ?? "modern anime"}
+Characters: ${characterSheet(chars) || "create Ethiopian characters that fit the story"}
 
-Story:
-${(story.story_text ?? "").slice(0, 6000)}
+Refined story:
+${refinedStory.slice(0, 8000)}
 
-Return JSON: {"panels":[{"scene":"vivid visual description, who is in the panel, action, environment, camera angle","dialogue":"short line or empty"}]}. Exactly ${project.panel_count} panels.`;
+Return JSON: {"scenes":[{"scene":"vivid anime visual description","dialogue":"short line or empty string"}]}. Exactly ${project.panel_count} scenes.`;
 
-  const json = await callGateway(
-    {
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ],
-      response_format: { type: "json_object" },
-    },
-    apiKey,
-  );
-  const content: string = json.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(content);
-  const panels: { scene: string; dialogue?: string }[] = Array.isArray(parsed.panels) ? parsed.panels : [];
-  return panels.slice(0, project.panel_count);
+  const text = await callGemini(sys, user, true);
+  const parsed = JSON.parse(text);
+  const scenes: { scene: string; dialogue?: string }[] = Array.isArray(parsed.scenes)
+    ? parsed.scenes
+    : Array.isArray(parsed.panels)
+      ? parsed.panels
+      : [];
+  return scenes.slice(0, project.panel_count).map((s) => ({
+    scene: s.scene ?? "",
+    dialogue: s.dialogue ?? "",
+  }));
 }
 
-async function generatePanelImage(prompt: string, apiKey: string): Promise<string> {
-  const json = await callGateway(
+/** Replicate — high-quality colored anime image generation. */
+async function generateSceneImage(prompt: string): Promise<Uint8Array> {
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) throw new Error("REPLICATE_API_TOKEN not configured");
+
+  // Using flux-schnell: fast, high-quality, follows complex prompts well.
+  const res = await fetch(
+    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
     {
-      model: "google/gemini-2.5-flash-image",
-      messages: [{ role: "user", content: prompt }],
-      modalities: ["image", "text"],
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "wait=60",
+      },
+      body: JSON.stringify({
+        input: {
+          prompt,
+          aspect_ratio: "1:1",
+          output_format: "png",
+          num_outputs: 1,
+          num_inference_steps: 4,
+          disable_safety_checker: true,
+        },
+      }),
     },
-    apiKey,
   );
-  const url: string | undefined =
-    json.choices?.[0]?.message?.images?.[0]?.image_url?.url ??
-    json.choices?.[0]?.message?.images?.[0]?.url;
-  if (!url) throw new Error("No image returned from gateway");
-  return url;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Replicate ${res.status}: ${text.slice(0, 300)}`);
+  }
+  let prediction = await res.json();
+
+  // If still processing, poll
+  let tries = 0;
+  while (prediction.status !== "succeeded" && prediction.status !== "failed" && tries < 60) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const poll = await fetch(prediction.urls.get, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    prediction = await poll.json();
+    tries++;
+  }
+  if (prediction.status !== "succeeded") {
+    throw new Error(`Replicate failed: ${prediction.error ?? prediction.status}`);
+  }
+  const url: string | undefined = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+  if (!url) throw new Error("Replicate returned no image URL");
+
+  const imgRes = await fetch(url);
+  if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`);
+  return new Uint8Array(await imgRes.arrayBuffer());
 }
 
 export const generateManga = createServerFn({ method: "POST" })
@@ -117,8 +182,6 @@ export const generateManga = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const { data: project, error: pe } = await supabaseAdmin
       .from("manga_projects")
@@ -140,36 +203,41 @@ export const generateManga = createServerFn({ method: "POST" })
       .select("*")
       .eq("story_id", project.story_id);
 
+    // Clamp panel count to 5-10
+    const panelCount = Math.max(5, Math.min(10, project.panel_count ?? 8));
+
     await supabaseAdmin
       .from("manga_projects")
-      .update({ status: "generating", progress: 0 })
+      .update({ status: "generating", progress: 0, panel_count: panelCount })
       .eq("id", project.id);
 
+    // Clear previous panels (re-generation)
+    await supabaseAdmin.from("generated_panels").delete().eq("project_id", project.id);
+
     try {
-      const panels = await planPanels(
-        project as Project,
-        story as Story,
+      // 1. Refine story via Gemini (multilingual + phonetic)
+      const { refined } = await refineStory(story as Story);
+
+      // 2. Plan scenes via Gemini
+      const scenes = await planScenes(
+        { ...(project as Project), panel_count: panelCount },
+        refined,
         (chars ?? []) as Character[],
-        apiKey,
       );
 
       const sheet = characterSheet((chars ?? []) as Character[]);
-      const styleHeader = `High quality colored anime/manga panel, ${project.art_style ?? "habesha-fusion"} style, ${project.mood ?? "cinematic"} mood, ${project.camera_style ?? "cinematic"} composition, ${project.visual_intensity ?? "vivid"} colors. Maintain consistent character appearances. Characters: ${sheet || "as described"}.`;
+      const styleHeader = `High-quality colored anime illustration, ${project.art_style ?? "modern anime"} style, ${project.mood ?? "cinematic"} mood, ${project.camera_style ?? "cinematic"} composition, ${project.visual_intensity ?? "vivid"} colors, detailed cel-shading, professional anime artwork. ${ETHIOPIAN_IDENTITY} Characters in this story: ${sheet || "Ethiopian characters as described"}. Maintain consistent character appearances across all scenes.`;
 
-      for (let i = 0; i < panels.length; i++) {
-        const p = panels[i];
-        const prompt = `${styleHeader}\n\nPanel ${i + 1}/${panels.length}: ${p.scene}`;
+      // 3. Generate each scene image via Replicate
+      for (let i = 0; i < scenes.length; i++) {
+        const s = scenes[i];
+        const prompt = `${styleHeader}\n\nScene ${i + 1} of ${scenes.length}: ${s.scene}`;
         try {
-          const dataUrl = await generatePanelImage(prompt, apiKey);
-          // dataUrl is like data:image/png;base64,xxxx
-          const [, mime, b64] = /^data:(image\/[a-z]+);base64,(.*)$/.exec(dataUrl) ?? [];
-          if (!b64) throw new Error("Bad image data");
-          const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-          const ext = mime.split("/")[1] ?? "png";
-          const path = `${userId}/${project.id}/${i + 1}.${ext}`;
+          const bytes = await generateSceneImage(prompt);
+          const path = `${userId}/${project.id}/${i + 1}.png`;
           const { error: upErr } = await supabaseAdmin.storage
             .from("manga-panels")
-            .upload(path, bytes, { contentType: mime, upsert: true });
+            .upload(path, bytes, { contentType: "image/png", upsert: true });
           if (upErr) throw upErr;
           const { data: pub } = supabaseAdmin.storage.from("manga-panels").getPublicUrl(path);
 
@@ -178,7 +246,7 @@ export const generateManga = createServerFn({ method: "POST" })
             user_id: userId,
             panel_number: i + 1,
             image_url: pub.publicUrl,
-            dialogue: p.dialogue ?? null,
+            dialogue: s.dialogue || null,
             prompt,
           });
         } catch (err) {
@@ -187,16 +255,13 @@ export const generateManga = createServerFn({ method: "POST" })
             user_id: userId,
             panel_number: i + 1,
             image_url: null,
-            dialogue: p.dialogue ?? null,
+            dialogue: s.dialogue || null,
             prompt: `[failed] ${err instanceof Error ? err.message : "unknown"}`,
           });
         }
 
-        const progress = Math.round(((i + 1) / panels.length) * 100);
-        await supabaseAdmin
-          .from("manga_projects")
-          .update({ progress })
-          .eq("id", project.id);
+        const progress = Math.round(((i + 1) / scenes.length) * 100);
+        await supabaseAdmin.from("manga_projects").update({ progress }).eq("id", project.id);
       }
 
       await supabaseAdmin
@@ -204,7 +269,7 @@ export const generateManga = createServerFn({ method: "POST" })
         .update({ status: "completed", progress: 100 })
         .eq("id", project.id);
 
-      return { ok: true, count: panels.length };
+      return { ok: true, count: scenes.length };
     } catch (err) {
       await supabaseAdmin
         .from("manga_projects")
