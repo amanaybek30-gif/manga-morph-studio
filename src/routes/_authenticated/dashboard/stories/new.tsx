@@ -49,7 +49,7 @@ function NewStory() {
   const [chars, setChars] = useState<Character[]>([newChar()]);
 
   // Step 3
-  const [panels, setPanels] = useState(12);
+  const [panels, setPanels] = useState(8);
   const [artStyle, setArtStyle] = useState("habesha-fusion");
   const [mood, setMood] = useState("adventurous");
   const [camera, setCamera] = useState("cinematic");
@@ -265,8 +265,8 @@ function NewStory() {
         {step === 2 && (
           <div className="space-y-6">
             <div>
-              <Label>Number of manga panels: {panels}</Label>
-              <Slider value={[panels]} min={4} max={60} step={2} onValueChange={(v) => setPanels(v[0])} className="mt-3" />
+              <Label>Number of anime scenes: {panels}</Label>
+              <Slider value={[panels]} min={5} max={10} step={1} onValueChange={(v) => setPanels(v[0])} className="mt-3" />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               {([

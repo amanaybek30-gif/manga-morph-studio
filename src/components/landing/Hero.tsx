@@ -42,7 +42,7 @@ export function Hero() {
             <Link to="/gallery">
               <Button size="lg" variant="outline" className="border-border hover:bg-accent">
                 <Play className="mr-1 h-4 w-4" />
-                Explore Gallery
+                Explore Stories
               </Button>
             </Link>
           </div>
