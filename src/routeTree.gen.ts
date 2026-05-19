@@ -19,6 +19,7 @@ import { Route as AuthenticatedDashboardMangaRouteImport } from './routes/_authe
 import { Route as AuthenticatedDashboardFavoritesRouteImport } from './routes/_authenticated/dashboard/favorites'
 import { Route as AuthenticatedDashboardStoriesIndexRouteImport } from './routes/_authenticated/dashboard/stories/index'
 import { Route as AuthenticatedDashboardStoriesNewRouteImport } from './routes/_authenticated/dashboard/stories/new'
+import { Route as AuthenticatedDashboardMangaProjectIdRouteImport } from './routes/_authenticated/dashboard/manga/$projectId'
 
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
@@ -75,15 +76,22 @@ const AuthenticatedDashboardStoriesNewRoute =
     path: '/dashboard/stories/new',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedDashboardMangaProjectIdRoute =
+  AuthenticatedDashboardMangaProjectIdRouteImport.update({
+    id: '/$projectId',
+    path: '/$projectId',
+    getParentRoute: () => AuthenticatedDashboardMangaRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
   '/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
-  '/dashboard/manga': typeof AuthenticatedDashboardMangaRoute
+  '/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/dashboard/manga/$projectId': typeof AuthenticatedDashboardMangaProjectIdRoute
   '/dashboard/stories/new': typeof AuthenticatedDashboardStoriesNewRoute
   '/dashboard/stories/': typeof AuthenticatedDashboardStoriesIndexRoute
 }
@@ -92,9 +100,10 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
   '/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
-  '/dashboard/manga': typeof AuthenticatedDashboardMangaRoute
+  '/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/dashboard/manga/$projectId': typeof AuthenticatedDashboardMangaProjectIdRoute
   '/dashboard/stories/new': typeof AuthenticatedDashboardStoriesNewRoute
   '/dashboard/stories': typeof AuthenticatedDashboardStoriesIndexRoute
 }
@@ -105,9 +114,10 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
   '/_authenticated/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
-  '/_authenticated/dashboard/manga': typeof AuthenticatedDashboardMangaRoute
+  '/_authenticated/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/dashboard/manga/$projectId': typeof AuthenticatedDashboardMangaProjectIdRoute
   '/_authenticated/dashboard/stories/new': typeof AuthenticatedDashboardStoriesNewRoute
   '/_authenticated/dashboard/stories/': typeof AuthenticatedDashboardStoriesIndexRoute
 }
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/dashboard/manga'
     | '/dashboard/settings'
     | '/dashboard/'
+    | '/dashboard/manga/$projectId'
     | '/dashboard/stories/new'
     | '/dashboard/stories/'
   fileRoutesByTo: FileRoutesByTo
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/dashboard/manga'
     | '/dashboard/settings'
     | '/dashboard'
+    | '/dashboard/manga/$projectId'
     | '/dashboard/stories/new'
     | '/dashboard/stories'
   id:
@@ -144,6 +156,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/manga'
     | '/_authenticated/dashboard/settings'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/dashboard/manga/$projectId'
     | '/_authenticated/dashboard/stories/new'
     | '/_authenticated/dashboard/stories/'
   fileRoutesById: FileRoutesById
@@ -227,12 +240,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardStoriesNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/dashboard/manga/$projectId': {
+      id: '/_authenticated/dashboard/manga/$projectId'
+      path: '/$projectId'
+      fullPath: '/dashboard/manga/$projectId'
+      preLoaderRoute: typeof AuthenticatedDashboardMangaProjectIdRouteImport
+      parentRoute: typeof AuthenticatedDashboardMangaRoute
+    }
   }
 }
 
+interface AuthenticatedDashboardMangaRouteChildren {
+  AuthenticatedDashboardMangaProjectIdRoute: typeof AuthenticatedDashboardMangaProjectIdRoute
+}
+
+const AuthenticatedDashboardMangaRouteChildren: AuthenticatedDashboardMangaRouteChildren =
+  {
+    AuthenticatedDashboardMangaProjectIdRoute:
+      AuthenticatedDashboardMangaProjectIdRoute,
+  }
+
+const AuthenticatedDashboardMangaRouteWithChildren =
+  AuthenticatedDashboardMangaRoute._addFileChildren(
+    AuthenticatedDashboardMangaRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardFavoritesRoute: typeof AuthenticatedDashboardFavoritesRoute
-  AuthenticatedDashboardMangaRoute: typeof AuthenticatedDashboardMangaRoute
+  AuthenticatedDashboardMangaRoute: typeof AuthenticatedDashboardMangaRouteWithChildren
   AuthenticatedDashboardSettingsRoute: typeof AuthenticatedDashboardSettingsRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedDashboardStoriesNewRoute: typeof AuthenticatedDashboardStoriesNewRoute
@@ -241,7 +276,8 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardFavoritesRoute: AuthenticatedDashboardFavoritesRoute,
-  AuthenticatedDashboardMangaRoute: AuthenticatedDashboardMangaRoute,
+  AuthenticatedDashboardMangaRoute:
+    AuthenticatedDashboardMangaRouteWithChildren,
   AuthenticatedDashboardSettingsRoute: AuthenticatedDashboardSettingsRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedDashboardStoriesNewRoute: AuthenticatedDashboardStoriesNewRoute,
@@ -262,3 +298,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
