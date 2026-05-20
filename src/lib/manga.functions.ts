@@ -50,45 +50,43 @@ function characterSheet(chars: Character[]): string {
     .join(" | ");
 }
 
-/** Gemini direct API — used for story refinement, multilingual handling, and scene planning. */
-async function callGemini(systemInstruction: string, userPrompt: string, jsonMode = false): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+/** Lovable AI Gateway — used for story refinement, multilingual handling, and scene planning. */
+async function callAI(system: string, user: string, jsonMode = false): Promise<string> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-        generationConfig: jsonMode
-          ? { responseMimeType: "application/json", temperature: 0.9 }
-          : { temperature: 0.8 },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        ],
-      }),
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: jsonMode ? 0.9 : 0.8,
+      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Gemini ${res.status}: ${text.slice(0, 300)}`);
+    if (res.status === 429) throw new Error("AI rate limit exceeded — please retry shortly.");
+    if (res.status === 402) throw new Error("AI credits exhausted — add credits in Workspace Settings.");
+    throw new Error(`AI gateway ${res.status}: ${text.slice(0, 300)}`);
   }
   const json = await res.json();
-  const text: string = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  if (!text) throw new Error("Gemini returned empty response");
+  const text: string = json.choices?.[0]?.message?.content ?? "";
+  if (!text) throw new Error("AI returned empty response");
   return text;
 }
 
 async function refineStory(story: Story): Promise<{ refined: string; languageNote: string }> {
   const sys = `You are a multilingual story editor fluent in Amharic, Tigrinya, Oromo, English, and phonetic transliterations of Ethiopian languages (e.g. "selam new" -> "ሰላም ነው" / "hello"). Detect the input language (including phonetic/romanized Ethiopian languages), translate to vivid English suitable for visual scene generation, and refine the narrative for clarity and cinematic flow. Preserve names, places, and cultural context. Output ONLY the refined English narrative — no preamble.`;
-  const text = await callGemini(sys, `Title: ${story.title}\nGenre: ${story.genre ?? "general"}\n\nStory:\n${(story.story_text ?? "").slice(0, 8000)}`);
-  return { refined: text.trim(), languageNote: "auto-detected & refined via Gemini" };
+  const text = await callAI(sys, `Title: ${story.title}\nGenre: ${story.genre ?? "general"}\n\nStory:\n${(story.story_text ?? "").slice(0, 8000)}`);
+  return { refined: text.trim(), languageNote: "auto-detected & refined via Lovable AI" };
 }
 
 async function planScenes(
@@ -107,7 +105,7 @@ ${refinedStory.slice(0, 8000)}
 
 Return JSON: {"scenes":[{"scene":"vivid anime visual description","dialogue":"short line or empty string"}]}. Exactly ${project.panel_count} scenes.`;
 
-  const text = await callGemini(sys, user, true);
+  const text = await callAI(sys, user, true);
   const parsed = JSON.parse(text);
   const scenes: { scene: string; dialogue?: string }[] = Array.isArray(parsed.scenes)
     ? parsed.scenes
