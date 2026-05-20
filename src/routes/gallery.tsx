@@ -26,13 +26,20 @@ function GalleryPage() {
     (async () => {
       const { data: stories } = await supabase
         .from("stories")
-        .select("id, title, genre, cover_url, user_id, profiles:profiles!inner(username)")
+        .select("id, title, genre, cover_url, user_id")
         .eq("is_public", true)
         .order("created_at", { ascending: false })
         .limit(60);
 
+      const rows = (stories ?? []) as Array<{ id: string; title: string; genre: string | null; cover_url: string | null; user_id: string }>;
+      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
+      const { data: profs } = userIds.length
+        ? await supabase.from("profiles").select("id, username").in("id", userIds)
+        : { data: [] as Array<{ id: string; username: string | null }> };
+      const profMap = new Map((profs ?? []).map(p => [p.id, p.username ?? "creator"]));
+
       const list: Item[] = [];
-      for (const s of (stories ?? []) as Array<{ id: string; title: string; genre: string | null; cover_url: string | null; profiles: { username: string | null } | null }>) {
+      for (const s of rows) {
         let cover = s.cover_url;
         if (!cover) {
           const { data: panel } = await supabase
@@ -49,7 +56,7 @@ function GalleryPage() {
           id: s.id,
           title: s.title,
           genre: s.genre ?? "Untagged",
-          author: s.profiles?.username ?? "creator",
+          author: profMap.get(s.user_id) ?? "creator",
           cover,
         });
       }
