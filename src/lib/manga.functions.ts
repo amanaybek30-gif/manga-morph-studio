@@ -105,7 +105,7 @@ ${refinedStory.slice(0, 8000)}
 
 Return JSON: {"scenes":[{"scene":"vivid anime visual description","dialogue":"short line or empty string"}]}. Exactly ${project.panel_count} scenes.`;
 
-  const text = await callGemini(sys, user, true);
+  const text = await callAI(sys, user, true);
   const parsed = JSON.parse(text);
   const scenes: { scene: string; dialogue?: string }[] = Array.isArray(parsed.scenes)
     ? parsed.scenes
