@@ -1,43 +1,63 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Search, Heart, Sparkles, ArrowLeft } from "lucide-react";
+import { Search, Heart, Sparkles, ArrowLeft, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import preview1 from "@/assets/preview-1.jpg";
-import preview2 from "@/assets/preview-2.jpg";
-import preview3 from "@/assets/preview-3.jpg";
 
 export const Route = createFileRoute("/gallery")({
-  head: () => ({ meta: [{ title: "Gallery — Habesha Manga" }, { name: "description", content: "Browse manga stories created by the Habesha Manga community." }] }),
+  head: () => ({ meta: [{ title: "Explore Stories — Habesha Manga" }, { name: "description", content: "Browse Ethiopian anime stories created by the Habesha Manga community." }] }),
   component: GalleryPage,
 });
 
-const demo = [
-  { id: "d1", title: "The Last Warrior of Lalibela", genre: "Shounen", author: "kenji", cover: preview1 },
-  { id: "d2", title: "Petals at Dusk", genre: "Shoujo", author: "aida", cover: preview2 },
-  { id: "d3", title: "Neo Addis 2099", genre: "Cyberpunk", author: "rey", cover: preview3 },
-  { id: "d4", title: "Mountains Remember", genre: "Drama", author: "selam", cover: preview2 },
-  { id: "d5", title: "Coffee & Constellations", genre: "Romance", author: "yonas", cover: preview1 },
-  { id: "d6", title: "Iron Veil", genre: "Action", author: "marta", cover: preview3 },
-];
+type Item = {
+  id: string;
+  title: string;
+  genre: string;
+  author: string;
+  cover: string | null;
+};
 
 function GalleryPage() {
   const [query, setQuery] = useState("");
-  const [community, setCommunity] = useState<typeof demo>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from("stories").select("id, title, genre, cover_url, user_id").eq("is_public", true).limit(12)
-      .then(({ data }) => {
-        if (data && data.length) {
-          setCommunity(data.map(d => ({
-            id: d.id, title: d.title, genre: d.genre ?? "Untagged", author: "creator",
-            cover: d.cover_url ?? preview1,
-          })));
+    (async () => {
+      const { data: stories } = await supabase
+        .from("stories")
+        .select("id, title, genre, cover_url, user_id, profiles:profiles!inner(username)")
+        .eq("is_public", true)
+        .order("created_at", { ascending: false })
+        .limit(60);
+
+      const list: Item[] = [];
+      for (const s of (stories ?? []) as Array<{ id: string; title: string; genre: string | null; cover_url: string | null; profiles: { username: string | null } | null }>) {
+        let cover = s.cover_url;
+        if (!cover) {
+          const { data: panel } = await supabase
+            .from("generated_panels")
+            .select("image_url, manga_projects!inner(story_id)")
+            .eq("manga_projects.story_id", s.id)
+            .not("image_url", "is", null)
+            .order("panel_number")
+            .limit(1)
+            .maybeSingle();
+          cover = (panel as { image_url: string | null } | null)?.image_url ?? null;
         }
-      });
+        list.push({
+          id: s.id,
+          title: s.title,
+          genre: s.genre ?? "Untagged",
+          author: s.profiles?.username ?? "creator",
+          cover,
+        });
+      }
+      setItems(list);
+      setLoading(false);
+    })();
   }, []);
 
-  const items = community.length ? community : demo;
   const filtered = items.filter(i => i.title.toLowerCase().includes(query.toLowerCase()) || i.genre.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -60,8 +80,8 @@ function GalleryPage() {
         <div className="flex flex-wrap items-end justify-between gap-6 mb-8">
           <div>
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">// Community</div>
-            <h1 className="font-display text-4xl font-bold tracking-tight">Explore the <span className="text-gradient">gallery</span></h1>
-            <p className="text-muted-foreground mt-2">Stories made by storytellers, brought to life by AI.</p>
+            <h1 className="font-display text-4xl font-bold tracking-tight">Explore <span className="text-gradient">stories</span></h1>
+            <p className="text-muted-foreground mt-2">Ethiopian anime stories, brought to life by AI.</p>
           </div>
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -78,23 +98,39 @@ function GalleryPage() {
           ))}
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((s) => (
-            <article key={s.id} className="group glass-panel rounded-2xl overflow-hidden shadow-soft hover:-translate-y-1 transition">
-              <div className="aspect-[3/4] overflow-hidden">
-                <img src={s.cover} alt={s.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
-              </div>
-              <div className="p-4">
-                <div className="text-xs text-primary font-mono mb-1">{s.genre}</div>
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-display text-lg font-semibold leading-tight">{s.title}</h3>
-                  <button className="text-muted-foreground hover:text-primary transition"><Heart className="h-4 w-4" /></button>
+        {loading ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[0,1,2,3,4,5].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-muted animate-pulse" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="glass-panel rounded-2xl p-16 text-center">
+            <ImageIcon className="h-8 w-8 text-primary mx-auto mb-3" />
+            <h3 className="font-display text-xl font-semibold">No stories yet</h3>
+            <p className="text-muted-foreground text-sm mt-1">Be the first to publish an Ethiopian anime story.</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((s) => (
+              <Link key={s.id} to="/story/$storyId" params={{ storyId: s.id }} className="group glass-panel rounded-2xl overflow-hidden shadow-soft hover:-translate-y-1 transition block">
+                <div className="aspect-[3/4] overflow-hidden bg-muted">
+                  {s.cover ? (
+                    <img src={s.cover} alt={s.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground"><ImageIcon className="h-8 w-8" /></div>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">@{s.author}</div>
-              </div>
-            </article>
-          ))}
-        </div>
+                <div className="p-4">
+                  <div className="text-xs text-primary font-mono mb-1">{s.genre}</div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-display text-lg font-semibold leading-tight">{s.title}</h3>
+                    <Heart className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-1">@{s.author}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
