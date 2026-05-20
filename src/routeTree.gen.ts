@@ -13,6 +13,7 @@ import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StoryStoryIdRouteImport } from './routes/story.$storyId'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedDashboardSettingsRouteImport } from './routes/_authenticated/dashboard/settings'
 import { Route as AuthenticatedDashboardMangaRouteImport } from './routes/_authenticated/dashboard/manga'
@@ -38,6 +39,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StoryStoryIdRoute = StoryStoryIdRouteImport.update({
+  id: '/story/$storyId',
+  path: '/story/$storyId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardIndexRoute =
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
+  '/story/$storyId': typeof StoryStoryIdRoute
   '/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
   '/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
+  '/story/$storyId': typeof StoryStoryIdRoute
   '/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
   '/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/gallery': typeof GalleryRoute
+  '/story/$storyId': typeof StoryStoryIdRoute
   '/_authenticated/dashboard/favorites': typeof AuthenticatedDashboardFavoritesRoute
   '/_authenticated/dashboard/manga': typeof AuthenticatedDashboardMangaRouteWithChildren
   '/_authenticated/dashboard/settings': typeof AuthenticatedDashboardSettingsRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/gallery'
+    | '/story/$storyId'
     | '/dashboard/favorites'
     | '/dashboard/manga'
     | '/dashboard/settings'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/gallery'
+    | '/story/$storyId'
     | '/dashboard/favorites'
     | '/dashboard/manga'
     | '/dashboard/settings'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/gallery'
+    | '/story/$storyId'
     | '/_authenticated/dashboard/favorites'
     | '/_authenticated/dashboard/manga'
     | '/_authenticated/dashboard/settings'
@@ -166,6 +178,7 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
   GalleryRoute: typeof GalleryRoute
+  StoryStoryIdRoute: typeof StoryStoryIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -196,6 +209,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/story/$storyId': {
+      id: '/story/$storyId'
+      path: '/story/$storyId'
+      fullPath: '/story/$storyId'
+      preLoaderRoute: typeof StoryStoryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard/': {
@@ -294,6 +314,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
   GalleryRoute: GalleryRoute,
+  StoryStoryIdRoute: StoryStoryIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
