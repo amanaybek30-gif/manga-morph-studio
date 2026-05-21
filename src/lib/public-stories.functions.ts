@@ -27,6 +27,7 @@ export const listPublicStories = createServerFn({ method: "GET" })
       .from("stories")
       .select("id,title,description,story_text,genre,cover_url,user_id,created_at")
       .eq("is_public", true)
+      .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (error) throw new Error(error.message);
@@ -91,6 +92,7 @@ export const getPublicStoryManga = createServerFn({ method: "GET" })
       .select("id,title,description,story_text,genre,user_id,is_public,status")
       .eq("id", data.storyId)
       .eq("is_public", true)
+      .eq("status", "published")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!story) return { story: null, author: null, projectStatus: null, panels: [] };
