@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { plotFallback } from "./public-stories.server";
 
 type Character = {
   name: string;
@@ -306,8 +307,7 @@ export const publishMangaStory = createServerFn({ method: "POST" })
       .eq("id", project.story_id)
       .single();
 
-    const source = ((story?.description || story?.story_text || "") as string).replace(/\s+/g, " ").trim();
-    const description = story?.description || (source ? `${source.slice(0, 177)}${source.length > 180 ? "…" : ""}` : null);
+    const description = plotFallback({ description: story?.description ?? null, story_text: story?.story_text ?? null });
 
     const update: { is_public: boolean; status: string; cover_url?: string; description?: string | null } = {
       is_public: true,
