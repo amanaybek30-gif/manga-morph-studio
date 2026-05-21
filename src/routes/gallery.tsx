@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { Search, Sparkles, ArrowLeft, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
+import { listPublicStories } from "@/lib/public-stories.functions";
 
 export const Route = createFileRoute("/gallery")({
   head: () => ({ meta: [{ title: "Explore Stories — Habesha Manga" }, { name: "description", content: "Browse Ethiopian anime stories created by the Habesha Manga community." }] }),
@@ -13,57 +14,25 @@ type Item = {
   id: string;
   title: string;
   genre: string;
+  description: string | null;
   author: string;
+  avatar: string | null;
   cover: string | null;
 };
 
 function GalleryPage() {
+  const getStories = useServerFn(listPublicStories);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: stories } = await supabase
-        .from("stories")
-        .select("id, title, genre, cover_url, user_id")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-        .limit(60);
-
-      const rows = (stories ?? []) as Array<{ id: string; title: string; genre: string | null; cover_url: string | null; user_id: string }>;
-      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
-      const { data: profs } = userIds.length
-        ? await supabase.from("profiles").select("id, username").in("id", userIds)
-        : { data: [] as Array<{ id: string; username: string | null }> };
-      const profMap = new Map((profs ?? []).map(p => [p.id, p.username ?? "creator"]));
-
-      const list: Item[] = [];
-      for (const s of rows) {
-        let cover = s.cover_url;
-        if (!cover) {
-          const { data: panel } = await supabase
-            .from("generated_panels")
-            .select("image_url, manga_projects!inner(story_id)")
-            .eq("manga_projects.story_id", s.id)
-            .not("image_url", "is", null)
-            .order("panel_number")
-            .limit(1)
-            .maybeSingle();
-          cover = (panel as { image_url: string | null } | null)?.image_url ?? null;
-        }
-        list.push({
-          id: s.id,
-          title: s.title,
-          genre: s.genre ?? "Untagged",
-          author: profMap.get(s.user_id) ?? "creator",
-          cover,
-        });
-      }
-      setItems(list);
+      const list = await getStories({ data: { limit: 60 } });
+      setItems(list.map((s) => ({ ...s, genre: s.genre ?? "Untagged" })) as Item[]);
       setLoading(false);
     })();
-  }, []);
+  }, [getStories]);
 
   const filtered = items.filter(i => i.title.toLowerCase().includes(query.toLowerCase()) || i.genre.toLowerCase().includes(query.toLowerCase()));
 
@@ -129,8 +98,12 @@ function GalleryPage() {
                 <div className="p-4">
                   <div className="text-xs text-primary font-mono mb-1">{s.genre}</div>
                   <h3 className="font-display text-lg font-semibold leading-tight">{s.title}</h3>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="text-sm text-muted-foreground">@{s.author}</div>
+                  {s.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.description}</p>}
+                  <div className="flex items-center justify-between mt-3 gap-3">
+                    <div className="flex items-center gap-2 min-w-0 text-sm text-muted-foreground">
+                      {s.avatar ? <img src={s.avatar} alt={s.author} className="h-7 w-7 rounded-full object-cover border border-border" /> : null}
+                      <span className="truncate">@{s.author}</span>
+                    </div>
                     <span className="text-sm font-medium text-primary group-hover:underline">View →</span>
                   </div>
                 </div>
