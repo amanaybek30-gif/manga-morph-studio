@@ -31,8 +31,6 @@ function MangaList() {
   const [busy, setBusy] = useState<string | null>(null);
   const runGen = useServerFn(generateManga);
 
-  if (path !== "/dashboard/manga") return <Outlet />;
-
   const load = async () => {
     if (!user) return;
     const { data } = await supabase
@@ -68,6 +66,8 @@ function MangaList() {
       setBusy(null);
     }
   };
+
+  if (path !== "/dashboard/manga") return <Outlet />;
 
   return (
     <div className="p-6 sm:p-10 max-w-6xl">
