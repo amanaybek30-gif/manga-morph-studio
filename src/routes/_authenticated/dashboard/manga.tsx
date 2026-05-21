@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Image as ImageIcon, Wand2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
@@ -25,10 +25,13 @@ type Row = {
 
 function MangaList() {
   const { user } = useAuth();
+  const path = useRouterState({ select: (s) => s.location.pathname });
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const runGen = useServerFn(generateManga);
+
+  if (path !== "/dashboard/manga") return <Outlet />;
 
   const load = async () => {
     if (!user) return;
