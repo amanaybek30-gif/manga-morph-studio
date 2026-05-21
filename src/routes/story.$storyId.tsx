@@ -78,7 +78,10 @@ function PublicStory() {
           <>
             <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">// {story.genre ?? "Story"}</div>
             <h1 className="font-display text-4xl font-bold tracking-tight">{story.title}</h1>
-            <div className="text-sm text-muted-foreground mt-1">by @{author}</div>
+            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              {avatar ? <img src={avatar} alt={author} className="h-8 w-8 rounded-full object-cover border border-border" /> : null}
+              <span>by @{author}</span>
+            </div>
             {story.description && <p className="text-muted-foreground mt-3 max-w-2xl">{story.description}</p>}
 
             <div className="mt-8">
@@ -90,26 +93,33 @@ function PublicStory() {
                   </div>
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 gap-5">
+                <div className="space-y-8">
                   {panels.map((p, i) => (
                     <motion.div
                       key={p.id}
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="glass-panel rounded-2xl overflow-hidden shadow-soft"
+                      className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-stretch"
                     >
-                      <div className="aspect-square bg-muted relative">
+                      <div className="glass-panel rounded-2xl overflow-hidden shadow-soft aspect-square bg-muted relative">
                         {p.image_url ? (
                           <img src={p.image_url} alt={`Scene ${p.panel_number}`} className="w-full h-full object-cover" loading="lazy" />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">Scene unavailable</div>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+                            <ImageIcon className="h-8 w-8 text-primary" /> Scene image unavailable
+                          </div>
                         )}
                         <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-background/90 text-xs font-mono">#{p.panel_number}</div>
                       </div>
-                      {p.dialogue && (
-                        <div className="p-4 text-sm border-t border-border italic">"{p.dialogue}"</div>
-                      )}
+                      <div className="glass-panel rounded-2xl p-5 shadow-soft flex flex-col justify-center">
+                        <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary mb-3">
+                          <MessageCircle className="h-4 w-4" /> Scene {p.panel_number}
+                        </div>
+                        <div className="rounded-2xl rounded-tl-sm border border-border bg-card p-4 text-sm leading-relaxed shadow-soft">
+                          {p.dialogue ? `“${p.dialogue}”` : "…"}
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
