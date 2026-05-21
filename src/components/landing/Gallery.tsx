@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ImageIcon, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { listPublicStories } from "@/lib/public-stories.functions";
 
 type Item = {
   id: string;
@@ -15,54 +16,17 @@ type Item = {
 };
 
 export function Gallery() {
+  const getStories = useServerFn(listPublicStories);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: stories } = await supabase
-        .from("stories")
-        .select("id, title, description, genre, cover_url, user_id")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-        .limit(6);
-
-      const rows = (stories ?? []) as Array<{ id: string; title: string; description: string | null; genre: string | null; cover_url: string | null; user_id: string }>;
-      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
-      const { data: profs } = userIds.length
-        ? await supabase.from("profiles").select("id, username, avatar_url").in("id", userIds)
-        : { data: [] as Array<{ id: string; username: string | null; avatar_url: string | null }> };
-      const profMap = new Map((profs ?? []).map(p => [p.id, p]));
-
-      const list: Item[] = [];
-      for (const s of rows) {
-        let cover = s.cover_url;
-        if (!cover) {
-          const { data: panel } = await supabase
-            .from("generated_panels")
-            .select("image_url, manga_projects!inner(story_id)")
-            .eq("manga_projects.story_id", s.id)
-            .not("image_url", "is", null)
-            .order("panel_number")
-            .limit(1)
-            .maybeSingle();
-          cover = (panel as { image_url: string | null } | null)?.image_url ?? null;
-        }
-        const prof = profMap.get(s.user_id);
-        list.push({
-          id: s.id,
-          title: s.title,
-          description: s.description,
-          genre: s.genre,
-          cover,
-          author: prof?.username ?? "creator",
-          avatar: prof?.avatar_url ?? null,
-        });
-      }
-      setItems(list);
+      const list = await getStories({ data: { limit: 6 } });
+      setItems(list as Item[]);
       setLoading(false);
     })();
-  }, []);
+  }, [getStories]);
 
   return (
     <section id="gallery" className="relative py-24">
