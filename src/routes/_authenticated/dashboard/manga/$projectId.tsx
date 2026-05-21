@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Globe, ExternalLink, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { publishMangaStory } from "@/lib/manga.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/manga/$projectId")({
   component: Viewer,
@@ -21,6 +23,7 @@ type Project = {
 
 function Viewer() {
   const { projectId } = Route.useParams();
+  const publishStory = useServerFn(publishMangaStory);
   const [project, setProject] = useState<Project | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,22 +53,23 @@ function Viewer() {
   const publish = async () => {
     if (!project?.story?.id) return;
     setPublishing(true);
-    const { error } = await supabase
-      .from("stories")
-      .update({ is_public: true, status: "published" })
-      .eq("id", project.story.id);
-    setPublishing(false);
-    if (error) return toast.error(error.message);
-    toast.success("Published! Your story is now live on the home page and Explore Stories.");
-    load();
+    try {
+      await publishStory({ data: { projectId } });
+      toast.success("Published! Your story is now live on the home page and Explore Stories.");
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Publishing failed");
+    } finally {
+      setPublishing(false);
+    }
   };
 
   if (loading) {
     return <div className="p-10 flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
   }
 
-  const isPublished = project?.story?.is_public === true;
-  const hasPanels = panels.some(p => p.image_url);
+  const isPublished = project?.story?.is_public === true && project?.story?.status === "published";
+  const hasPanels = panels.length > 0;
 
   return (
     <div className="p-6 sm:p-10 max-w-5xl">
