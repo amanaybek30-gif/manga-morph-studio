@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { plotFallback } from "./public-stories.server";
 
 type PublicStoryRow = {
   id: string;
@@ -12,11 +13,6 @@ type PublicStoryRow = {
   user_id: string;
   created_at?: string;
 };
-
-function plotFallback(story: Pick<PublicStoryRow, "description" | "story_text">) {
-  const source = (story.description || story.story_text || "").replace(/\s+/g, " ").trim();
-  return source.length > 180 ? `${source.slice(0, 177)}…` : source || null;
-}
 
 export const listPublicStories = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) =>
