@@ -107,6 +107,7 @@ function MangaList() {
         <div className="grid sm:grid-cols-2 gap-4">
           {rows.map((r) => {
             const StatusIcon = r.status === "completed" ? CheckCircle2 : r.status === "failed" ? AlertTriangle : Loader2;
+            const published = r.story?.is_public === true && r.story?.status === "published";
             return (
               <div key={r.id} className="glass-panel rounded-2xl p-5 shadow-soft">
                 <div className="flex items-start justify-between gap-3">
@@ -138,6 +139,20 @@ function MangaList() {
                   >
                     {busy === r.id ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Generating…</> : <><Wand2 className="h-4 w-4 mr-1" /> Generate panels</>}
                   </Button>
+                )}
+                {r.status === "completed" && !published && (
+                  <Button
+                    onClick={() => handlePublish(r.id)}
+                    disabled={busy === r.id}
+                    className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    {busy === r.id ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Publishing…</> : "Publish story"}
+                  </Button>
+                )}
+                {published && r.story?.id && (
+                  <Link to="/story/$storyId" params={{ storyId: r.story.id }}>
+                    <Button variant="outline" className="w-full mt-4">View public story</Button>
+                  </Link>
                 )}
               </div>
             );
