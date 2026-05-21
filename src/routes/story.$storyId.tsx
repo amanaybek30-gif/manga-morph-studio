@@ -5,12 +5,11 @@ import { ArrowLeft, Loader2, Sparkles, ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/story/$storyId")({
-  head: ({ params }) => ({
+  head: () => ({
     meta: [
-      { title: `Story — Habesha Manga` },
-      { name: "description", content: `Read this Ethiopian AI-generated anime story on Habesha Manga.` },
+      { title: "Story — Habesha Manga" },
+      { name: "description", content: "Read this Ethiopian AI-generated anime story on Habesha Manga." },
     ],
-    ...(params ? {} : {}),
   }),
   component: PublicStory,
 });
