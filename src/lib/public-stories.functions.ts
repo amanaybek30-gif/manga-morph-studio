@@ -113,7 +113,10 @@ export const getPublicStoryManga = createServerFn({ method: "GET" })
           .order("panel_number", { ascending: true })
       : { data: [] };
 
-    const panelsByProject = new Map<string, typeof panelRows>();
+    const panelsByProject = new Map<
+      string,
+      Array<{ id: string; project_id: string; panel_number: number; image_url: string | null; dialogue: string | null }>
+    >();
     for (const project of projects ?? []) panelsByProject.set(project.id, []);
     for (const panel of panelRows ?? []) panelsByProject.get(panel.project_id)?.push(panel);
 
