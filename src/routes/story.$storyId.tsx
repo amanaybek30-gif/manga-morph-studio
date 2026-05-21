@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Sparkles, ImageIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles, ImageIcon, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicStoryManga } from "@/lib/public-stories.functions";
 
 export const Route = createFileRoute("/story/$storyId")({
   head: () => ({
@@ -14,47 +16,27 @@ export const Route = createFileRoute("/story/$storyId")({
   component: PublicStory,
 });
 
-type Story = { id: string; title: string; genre: string | null; description: string | null; user_id: string };
+type Story = { id: string; title: string; genre: string | null; description: string | null; status: string };
 type Panel = { id: string; panel_number: number; image_url: string | null; dialogue: string | null };
 
 function PublicStory() {
   const { storyId } = Route.useParams();
+  const getStory = useServerFn(getPublicStoryManga);
   const [story, setStory] = useState<Story | null>(null);
   const [author, setAuthor] = useState<string>("creator");
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [panels, setPanels] = useState<Panel[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
   const load = async () => {
-    const { data: s } = await supabase
-      .from("stories")
-      .select("id, title, genre, description, user_id")
-      .eq("id", storyId)
-      .maybeSingle();
-    setStory(s as Story | null);
-
-    if (s) {
-      const { data: prof } = await supabase.from("profiles").select("username").eq("id", s.user_id).maybeSingle();
-      setAuthor(prof?.username ?? "creator");
-
-      const { data: project } = await supabase
-        .from("manga_projects")
-        .select("id, status")
-        .eq("story_id", storyId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (project) {
-        setStatus(project.status);
-        const { data: pn } = await supabase
-          .from("generated_panels")
-          .select("id, panel_number, image_url, dialogue")
-          .eq("project_id", project.id)
-          .order("panel_number");
-        setPanels((pn ?? []) as Panel[]);
-      }
-    }
+    setLoading(true);
+    const data = await getStory({ data: { storyId } });
+    setStory(data.story as Story | null);
+    setAuthor(data.author?.name ?? "creator");
+    setAvatar(data.author?.avatar ?? null);
+    setStatus(data.projectStatus ?? "");
+    setPanels(data.panels as Panel[]);
     setLoading(false);
   };
 
