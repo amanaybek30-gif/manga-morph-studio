@@ -275,3 +275,49 @@ export const generateManga = createServerFn({ method: "POST" })
       throw err;
     }
   });
+
+export const publishMangaStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: project, error: projectError } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id,story_id,user_id,status")
+      .eq("id", data.projectId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found");
+
+    const { data: firstPanel } = await supabaseAdmin
+      .from("generated_panels")
+      .select("image_url")
+      .eq("project_id", project.id)
+      .not("image_url", "is", null)
+      .order("panel_number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: story } = await supabaseAdmin
+      .from("stories")
+      .select("description,story_text")
+      .eq("id", project.story_id)
+      .single();
+
+    const source = ((story?.description || story?.story_text || "") as string).replace(/\s+/g, " ").trim();
+    const description = story?.description || (source ? `${source.slice(0, 177)}${source.length > 180 ? "…" : ""}` : null);
+
+    const update: { is_public: boolean; status: string; cover_url?: string; description?: string | null } = {
+      is_public: true,
+      status: "published",
+    };
+    if (firstPanel?.image_url) update.cover_url = firstPanel.image_url;
+    if (description) update.description = description;
+
+    const { error: updateError } = await supabaseAdmin.from("stories").update(update).eq("id", project.story_id);
+    if (updateError) throw new Error(updateError.message);
+
+    return { ok: true, storyId: project.story_id };
+  });
