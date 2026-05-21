@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, Sparkles, ImageIcon, MessageCircle } from "lucide-react";
@@ -43,7 +43,7 @@ function PublicStory() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const data = await getStory({ data: { storyId } });
     setStory(data.story as Story | null);
@@ -52,7 +52,7 @@ function PublicStory() {
     setStatus(data.projectStatus ?? "");
     setPanels(data.panels as Panel[]);
     setLoading(false);
-  };
+  }, [getStory, storyId]);
 
   useEffect(() => {
     load();
@@ -63,7 +63,7 @@ function PublicStory() {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [storyId]);
+  }, [load, storyId]);
 
   return (
     <div className="min-h-screen">
