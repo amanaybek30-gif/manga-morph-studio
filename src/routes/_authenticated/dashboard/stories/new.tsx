@@ -79,7 +79,7 @@ function NewStory() {
     try {
       const tagsArr = tags.split(",").map(t => t.trim()).filter(Boolean);
       const { data: story, error: e1 } = await supabase.from("stories").insert({
-        user_id: user.id, title, genre, description, story_text: storyText, tags: tagsArr, status: "published", is_public: true,
+        user_id: user.id, title, genre, description, story_text: storyText, tags: tagsArr, status: "draft", is_public: false,
       }).select().single();
       if (e1) throw e1;
 
