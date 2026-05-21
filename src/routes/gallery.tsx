@@ -128,11 +128,11 @@ function GalleryPage() {
                 </div>
                 <div className="p-4">
                   <div className="text-xs text-primary font-mono mb-1">{s.genre}</div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-lg font-semibold leading-tight">{s.title}</h3>
-                    <Heart className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-display text-lg font-semibold leading-tight">{s.title}</h3>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-sm text-muted-foreground">@{s.author}</div>
+                    <span className="text-sm font-medium text-primary group-hover:underline">View →</span>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">@{s.author}</div>
                 </div>
               </Link>
             ))}
