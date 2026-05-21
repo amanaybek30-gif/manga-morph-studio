@@ -20,7 +20,13 @@ type Row = {
   art_style: string | null;
   panel_count: number;
   created_at: string;
-  story: { id: string; title: string; genre: string | null; is_public: boolean; status: string } | null;
+  story: {
+    id: string;
+    title: string;
+    genre: string | null;
+    is_public: boolean;
+    status: string;
+  } | null;
 };
 
 function MangaList() {
@@ -36,7 +42,9 @@ function MangaList() {
     if (!user) return;
     const { data } = await supabase
       .from("manga_projects")
-      .select("id,status,progress,art_style,panel_count,created_at,story:stories(id,title,genre,is_public,status)")
+      .select(
+        "id,status,progress,art_style,panel_count,created_at,story:stories(id,title,genre,is_public,status)",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setRows((data ?? []) as unknown as Row[]);
@@ -48,9 +56,20 @@ function MangaList() {
     if (!user) return;
     const ch = supabase
       .channel("manga_projects_changes")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "manga_projects", filter: `user_id=eq.${user.id}` }, load)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "manga_projects",
+          filter: `user_id=eq.${user.id}`,
+        },
+        load,
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -85,12 +104,16 @@ function MangaList() {
 
   return (
     <div className="p-6 sm:p-10 max-w-6xl">
-      <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">// Library</div>
+      <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">
+        // Library
+      </div>
       <h1 className="font-display text-3xl font-bold mb-8">Generated Manga</h1>
 
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-4">
-          {[0, 1].map(i => <div key={i} className="h-40 rounded-2xl bg-muted animate-pulse" />)}
+          {[0, 1].map((i) => (
+            <div key={i} className="h-40 rounded-2xl bg-muted animate-pulse" />
+          ))}
         </div>
       ) : rows.length === 0 ? (
         <div className="glass-panel rounded-2xl p-12 text-center shadow-soft">
@@ -98,29 +121,46 @@ function MangaList() {
             <ImageIcon className="h-6 w-6 text-primary" />
           </div>
           <h3 className="font-display text-xl font-semibold">No manga projects yet</h3>
-          <p className="text-muted-foreground text-sm mt-1">Create a story to queue your first generation.</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Create a story to queue your first generation.
+          </p>
           <Link to="/dashboard/stories/new">
-            <Button className="mt-5 bg-primary hover:bg-primary/90 text-primary-foreground">Create a story</Button>
+            <Button className="mt-5 bg-primary hover:bg-primary/90 text-primary-foreground">
+              Create a story
+            </Button>
           </Link>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {rows.map((r) => {
-            const StatusIcon = r.status === "completed" ? CheckCircle2 : r.status === "failed" ? AlertTriangle : Loader2;
+            const StatusIcon =
+              r.status === "completed"
+                ? CheckCircle2
+                : r.status === "failed"
+                  ? AlertTriangle
+                  : Loader2;
             const published = r.story?.is_public === true && r.story?.status === "published";
             return (
               <div key={r.id} className="glass-panel rounded-2xl p-5 shadow-soft">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-xs text-primary font-mono mb-1">{r.story?.genre ?? "Untagged"} · {r.panel_count} panels</div>
-                    <h3 className="font-display text-lg font-semibold truncate">{r.story?.title ?? "Untitled"}</h3>
+                    <div className="text-xs text-primary font-mono mb-1">
+                      {r.story?.genre ?? "Untagged"} · {r.panel_count} panels
+                    </div>
+                    <h3 className="font-display text-lg font-semibold truncate">
+                      {r.story?.title ?? "Untitled"}
+                    </h3>
                     <div className="text-xs text-muted-foreground mt-1 capitalize flex items-center gap-1">
-                      <StatusIcon className={`h-3 w-3 ${r.status === "generating" ? "animate-spin" : ""}`} />
+                      <StatusIcon
+                        className={`h-3 w-3 ${r.status === "generating" ? "animate-spin" : ""}`}
+                      />
                       {r.status}
                     </div>
                   </div>
                   <Link to="/dashboard/manga/$projectId" params={{ projectId: r.id }}>
-                    <Button variant="outline" size="sm">View</Button>
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
                   </Link>
                 </div>
 
@@ -137,7 +177,15 @@ function MangaList() {
                     disabled={busy === r.id}
                     className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    {busy === r.id ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Generating…</> : <><Wand2 className="h-4 w-4 mr-1" /> Generate panels</>}
+                    {busy === r.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Generating…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4 mr-1" /> Generate panels
+                      </>
+                    )}
                   </Button>
                 )}
                 {r.status === "completed" && !published && (
@@ -146,12 +194,20 @@ function MangaList() {
                     disabled={busy === r.id}
                     className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
-                    {busy === r.id ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Publishing…</> : "Publish story"}
+                    {busy === r.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Publishing…
+                      </>
+                    ) : (
+                      "Publish story"
+                    )}
                   </Button>
                 )}
                 {published && r.story?.id && (
                   <Link to="/story/$storyId" params={{ storyId: r.story.id }}>
-                    <Button variant="outline" className="w-full mt-4">View public story</Button>
+                    <Button variant="outline" className="w-full mt-4">
+                      View public story
+                    </Button>
                   </Link>
                 )}
               </div>

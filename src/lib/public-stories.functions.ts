@@ -34,7 +34,10 @@ export const listPublicStories = createServerFn({ method: "GET" })
 
     const [{ data: profiles }, { data: projects }] = await Promise.all([
       userIds.length
-        ? supabaseAdmin.from("profiles").select("id,username,display_name,avatar_url").in("id", userIds)
+        ? supabaseAdmin
+            .from("profiles")
+            .select("id,username,display_name,avatar_url")
+            .in("id", userIds)
         : Promise.resolve({ data: [] }),
       storyIds.length
         ? supabaseAdmin
@@ -48,7 +51,8 @@ export const listPublicStories = createServerFn({ method: "GET" })
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
     const firstProjectByStory = new Map<string, string>();
     for (const project of projects ?? []) {
-      if (!firstProjectByStory.has(project.story_id)) firstProjectByStory.set(project.story_id, project.id);
+      if (!firstProjectByStory.has(project.story_id))
+        firstProjectByStory.set(project.story_id, project.id);
     }
 
     const projectIds = Array.from(firstProjectByStory.values());
@@ -62,7 +66,8 @@ export const listPublicStories = createServerFn({ method: "GET" })
       : { data: [] };
     const coverByProject = new Map<string, string>();
     for (const panel of panels ?? []) {
-      if (panel.image_url && !coverByProject.has(panel.project_id)) coverByProject.set(panel.project_id, panel.image_url);
+      if (panel.image_url && !coverByProject.has(panel.project_id))
+        coverByProject.set(panel.project_id, panel.image_url);
     }
 
     return rows.map((story) => {
@@ -73,7 +78,7 @@ export const listPublicStories = createServerFn({ method: "GET" })
         title: story.title,
         description: plotFallback(story),
         genre: story.genre,
-        cover: story.cover_url ?? (projectId ? coverByProject.get(projectId) ?? null : null),
+        cover: story.cover_url ?? (projectId ? (coverByProject.get(projectId) ?? null) : null),
         author: profile?.username ?? profile?.display_name ?? "creator",
         avatar: profile?.avatar_url ?? null,
       };
@@ -94,7 +99,11 @@ export const getPublicStoryManga = createServerFn({ method: "GET" })
     if (!story) return { story: null, author: null, projectStatus: null, panels: [] };
 
     const [{ data: profile }, { data: projects }] = await Promise.all([
-      supabaseAdmin.from("profiles").select("username,display_name,avatar_url").eq("id", story.user_id).maybeSingle(),
+      supabaseAdmin
+        .from("profiles")
+        .select("username,display_name,avatar_url")
+        .eq("id", story.user_id)
+        .maybeSingle(),
       supabaseAdmin
         .from("manga_projects")
         .select("id,status,created_at")
@@ -113,13 +122,22 @@ export const getPublicStoryManga = createServerFn({ method: "GET" })
 
     const panelsByProject = new Map<
       string,
-      Array<{ id: string; project_id: string; panel_number: number; image_url: string | null; dialogue: string | null }>
+      Array<{
+        id: string;
+        project_id: string;
+        panel_number: number;
+        image_url: string | null;
+        dialogue: string | null;
+      }>
     >();
     for (const project of projects ?? []) panelsByProject.set(project.id, []);
     for (const panel of panelRows ?? []) panelsByProject.get(panel.project_id)?.push(panel);
 
-    const selectedProject = (projects ?? []).find((p) => (panelsByProject.get(p.id)?.length ?? 0) > 0) ?? projects?.[0] ?? null;
-    const panels = selectedProject ? panelsByProject.get(selectedProject.id) ?? [] : [];
+    const selectedProject =
+      (projects ?? []).find((p) => (panelsByProject.get(p.id)?.length ?? 0) > 0) ??
+      projects?.[0] ??
+      null;
+    const panels = selectedProject ? (panelsByProject.get(selectedProject.id) ?? []) : [];
 
     return {
       story: {

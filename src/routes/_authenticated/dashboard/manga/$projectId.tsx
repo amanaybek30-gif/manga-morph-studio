@@ -12,13 +12,24 @@ export const Route = createFileRoute("/_authenticated/dashboard/manga/$projectId
   component: Viewer,
 });
 
-type Panel = { id: string; panel_number: number; image_url: string | null; dialogue: string | null };
+type Panel = {
+  id: string;
+  panel_number: number;
+  image_url: string | null;
+  dialogue: string | null;
+};
 type Project = {
   id: string;
   status: string;
   progress: number;
   story_id: string;
-  story: { id: string; title: string; genre: string | null; is_public: boolean; status: string } | null;
+  story: {
+    id: string;
+    title: string;
+    genre: string | null;
+    is_public: boolean;
+    status: string;
+  } | null;
 };
 
 function Viewer() {
@@ -31,8 +42,16 @@ function Viewer() {
 
   const load = async () => {
     const [{ data: p }, { data: pn }] = await Promise.all([
-      supabase.from("manga_projects").select("id,status,progress,story_id,story:stories(id,title,genre,is_public,status)").eq("id", projectId).single(),
-      supabase.from("generated_panels").select("id,panel_number,image_url,dialogue").eq("project_id", projectId).order("panel_number"),
+      supabase
+        .from("manga_projects")
+        .select("id,status,progress,story_id,story:stories(id,title,genre,is_public,status)")
+        .eq("id", projectId)
+        .single(),
+      supabase
+        .from("generated_panels")
+        .select("id,panel_number,image_url,dialogue")
+        .eq("project_id", projectId)
+        .order("panel_number"),
     ]);
     setProject(p as unknown as Project);
     setPanels((pn ?? []) as Panel[]);
@@ -43,10 +62,30 @@ function Viewer() {
     load();
     const ch = supabase
       .channel(`project_${projectId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "generated_panels", filter: `project_id=eq.${projectId}` }, load)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "manga_projects", filter: `id=eq.${projectId}` }, load)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "generated_panels",
+          filter: `project_id=eq.${projectId}`,
+        },
+        load,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "manga_projects",
+          filter: `id=eq.${projectId}`,
+        },
+        load,
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -65,7 +104,11 @@ function Viewer() {
   };
 
   if (loading) {
-    return <div className="p-10 flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>;
+    return (
+      <div className="p-10 flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
   }
 
   const isPublished = project?.story?.is_public === true && project?.story?.status === "published";
@@ -73,12 +116,22 @@ function Viewer() {
 
   return (
     <div className="p-6 sm:p-10 max-w-5xl">
-      <Link to="/dashboard/manga"><Button variant="ghost" size="sm" className="mb-4"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button></Link>
+      <Link to="/dashboard/manga">
+        <Button variant="ghost" size="sm" className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+      </Link>
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">// {project?.story?.genre ?? "Manga"}</div>
-          <h1 className="font-display text-3xl font-bold mb-2">{project?.story?.title ?? "Untitled"}</h1>
-          <div className="text-sm text-muted-foreground capitalize">Status: {project?.status} · {project?.progress}%</div>
+          <div className="text-xs font-mono uppercase tracking-widest text-primary mb-2">
+            // {project?.story?.genre ?? "Manga"}
+          </div>
+          <h1 className="font-display text-3xl font-bold mb-2">
+            {project?.story?.title ?? "Untitled"}
+          </h1>
+          <div className="text-sm text-muted-foreground capitalize">
+            Status: {project?.status} · {project?.progress}%
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {isPublished ? (
@@ -88,13 +141,19 @@ function Viewer() {
               </span>
               {project?.story?.id && (
                 <Link to="/story/$storyId" params={{ storyId: project.story.id }}>
-                  <Button variant="outline" size="sm"><ExternalLink className="h-4 w-4 mr-1.5" /> View public page</Button>
+                  <Button variant="outline" size="sm">
+                    <ExternalLink className="h-4 w-4 mr-1.5" /> View public page
+                  </Button>
                 </Link>
               )}
             </>
           ) : (
             <Button onClick={publish} disabled={publishing || !hasPanels} size="sm">
-              {publishing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Globe className="h-4 w-4 mr-1.5" />}
+              {publishing ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Globe className="h-4 w-4 mr-1.5" />
+              )}
               {publishing ? "Publishing…" : hasPanels ? "Publish story" : "Waiting for panels…"}
             </Button>
           )}
@@ -118,11 +177,20 @@ function Viewer() {
             >
               <div className="aspect-square bg-muted relative">
                 {p.image_url ? (
-                  <img src={p.image_url} alt={`Panel ${p.panel_number}`} className="w-full h-full object-cover" loading="lazy" />
+                  <img
+                    src={p.image_url}
+                    alt={`Panel ${p.panel_number}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">Panel failed</div>
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+                    Panel failed
+                  </div>
                 )}
-                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-background/90 text-xs font-mono">#{p.panel_number}</div>
+                <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-background/90 text-xs font-mono">
+                  #{p.panel_number}
+                </div>
               </div>
               {p.dialogue && (
                 <div className="p-4 text-sm border-t border-border italic">"{p.dialogue}"</div>
