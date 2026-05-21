@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ImageIcon, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { listPublicStories } from "@/lib/public-stories.functions";
 
 type Item = {
   id: string;
@@ -15,79 +16,51 @@ type Item = {
 };
 
 export function Gallery() {
+  const getStories = useServerFn(listPublicStories);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: stories } = await supabase
-        .from("stories")
-        .select("id, title, description, genre, cover_url, user_id")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false })
-        .limit(6);
-
-      const rows = (stories ?? []) as Array<{ id: string; title: string; description: string | null; genre: string | null; cover_url: string | null; user_id: string }>;
-      const userIds = Array.from(new Set(rows.map(r => r.user_id)));
-      const { data: profs } = userIds.length
-        ? await supabase.from("profiles").select("id, username, avatar_url").in("id", userIds)
-        : { data: [] as Array<{ id: string; username: string | null; avatar_url: string | null }> };
-      const profMap = new Map((profs ?? []).map(p => [p.id, p]));
-
-      const list: Item[] = [];
-      for (const s of rows) {
-        let cover = s.cover_url;
-        if (!cover) {
-          const { data: panel } = await supabase
-            .from("generated_panels")
-            .select("image_url, manga_projects!inner(story_id)")
-            .eq("manga_projects.story_id", s.id)
-            .not("image_url", "is", null)
-            .order("panel_number")
-            .limit(1)
-            .maybeSingle();
-          cover = (panel as { image_url: string | null } | null)?.image_url ?? null;
-        }
-        const prof = profMap.get(s.user_id);
-        list.push({
-          id: s.id,
-          title: s.title,
-          description: s.description,
-          genre: s.genre,
-          cover,
-          author: prof?.username ?? "creator",
-          avatar: prof?.avatar_url ?? null,
-        });
-      }
-      setItems(list);
+      const list = await getStories({ data: { limit: 6 } });
+      setItems(list as Item[]);
       setLoading(false);
     })();
-  }, []);
+  }, [getStories]);
 
   return (
     <section id="gallery" className="relative py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-12">
           <div className="max-w-xl">
-            <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">// Gallery</div>
+            <div className="text-xs font-mono uppercase tracking-widest text-primary mb-3">
+              // Gallery
+            </div>
             <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-tight">
               Made by the <span className="text-gradient">community</span>
             </h2>
           </div>
-          <Link to="/gallery" className="text-sm text-muted-foreground hover:text-foreground transition">
+          <Link
+            to="/gallery"
+            className="text-sm text-muted-foreground hover:text-foreground transition"
+          >
             Explore all stories →
           </Link>
         </div>
 
         {loading ? (
           <div className="grid md:grid-cols-3 gap-5">
-            {[0,1,2].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-muted animate-pulse" />)}
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="aspect-[3/4] rounded-2xl bg-muted animate-pulse" />
+            ))}
           </div>
         ) : items.length === 0 ? (
           <div className="glass-panel rounded-2xl p-16 text-center">
             <ImageIcon className="h-8 w-8 text-primary mx-auto mb-3" />
             <h3 className="font-display text-xl font-semibold">No published stories yet</h3>
-            <p className="text-muted-foreground text-sm mt-1">Be the first to publish an Ethiopian anime story.</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              Be the first to publish an Ethiopian anime story.
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-3 gap-5">
@@ -102,8 +75,12 @@ export function Gallery() {
               >
                 <div className="aspect-[3/4] overflow-hidden bg-muted">
                   {item.cover ? (
-                    <img src={item.cover} alt={item.title} loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                    <img
+                      src={item.cover}
+                      alt={item.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                       <ImageIcon className="h-10 w-10" />
@@ -119,7 +96,11 @@ export function Gallery() {
                   <div className="flex items-center justify-between mt-auto pt-2">
                     <div className="flex items-center gap-2 min-w-0">
                       {item.avatar ? (
-                        <img src={item.avatar} alt={item.author} className="h-7 w-7 rounded-full object-cover border border-border" />
+                        <img
+                          src={item.avatar}
+                          alt={item.author}
+                          className="h-7 w-7 rounded-full object-cover border border-border"
+                        />
                       ) : (
                         <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-[10px] font-bold text-primary-foreground">
                           {item.author.slice(0, 2).toUpperCase()}

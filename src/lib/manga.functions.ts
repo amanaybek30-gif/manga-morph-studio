@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { plotFallback } from "./public-stories.server";
 
 type Character = {
   name: string;
@@ -74,7 +75,8 @@ async function callAI(system: string, user: string, jsonMode = false): Promise<s
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 429) throw new Error("AI rate limit exceeded — please retry shortly.");
-    if (res.status === 402) throw new Error("AI credits exhausted — add credits in Workspace Settings.");
+    if (res.status === 402)
+      throw new Error("AI credits exhausted — add credits in Workspace Settings.");
     throw new Error(`AI gateway ${res.status}: ${text.slice(0, 300)}`);
   }
   const json = await res.json();
@@ -85,7 +87,10 @@ async function callAI(system: string, user: string, jsonMode = false): Promise<s
 
 async function refineStory(story: Story): Promise<{ refined: string; languageNote: string }> {
   const sys = `You are a multilingual story editor fluent in Amharic, Tigrinya, Oromo, English, and phonetic transliterations of Ethiopian languages (e.g. "selam new" -> "ሰላም ነው" / "hello"). Detect the input language (including phonetic/romanized Ethiopian languages), translate to vivid English suitable for visual scene generation, and refine the narrative for clarity and cinematic flow. Preserve names, places, and cultural context. Output ONLY the refined English narrative — no preamble.`;
-  const text = await callAI(sys, `Title: ${story.title}\nGenre: ${story.genre ?? "general"}\n\nStory:\n${(story.story_text ?? "").slice(0, 8000)}`);
+  const text = await callAI(
+    sys,
+    `Title: ${story.title}\nGenre: ${story.genre ?? "general"}\n\nStory:\n${(story.story_text ?? "").slice(0, 8000)}`,
+  );
   return { refined: text.trim(), languageNote: "auto-detected & refined via Lovable AI" };
 }
 
@@ -164,7 +169,9 @@ async function generateSceneImage(prompt: string): Promise<Uint8Array> {
   if (prediction.status !== "succeeded") {
     throw new Error(`Replicate failed: ${prediction.error ?? prediction.status}`);
   }
-  const url: string | undefined = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+  const url: string | undefined = Array.isArray(prediction.output)
+    ? prediction.output[0]
+    : prediction.output;
   if (!url) throw new Error("Replicate returned no image URL");
 
   const imgRes = await fetch(url);
@@ -174,9 +181,7 @@ async function generateSceneImage(prompt: string): Promise<Uint8Array> {
 
 export const generateManga = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z.object({ projectId: z.string().uuid() }).parse(input),
-  )
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { userId } = context;
 
@@ -268,10 +273,63 @@ export const generateManga = createServerFn({ method: "POST" })
 
       return { ok: true, count: scenes.length };
     } catch (err) {
-      await supabaseAdmin
-        .from("manga_projects")
-        .update({ status: "failed" })
-        .eq("id", project.id);
+      await supabaseAdmin.from("manga_projects").update({ status: "failed" }).eq("id", project.id);
       throw err;
     }
+  });
+
+export const publishMangaStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ projectId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: project, error: projectError } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id,story_id,user_id,status")
+      .eq("id", data.projectId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (projectError) throw new Error(projectError.message);
+    if (!project) throw new Error("Project not found");
+
+    const { data: firstPanel } = await supabaseAdmin
+      .from("generated_panels")
+      .select("image_url")
+      .eq("project_id", project.id)
+      .not("image_url", "is", null)
+      .order("panel_number", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: story } = await supabaseAdmin
+      .from("stories")
+      .select("description,story_text")
+      .eq("id", project.story_id)
+      .single();
+
+    const description = plotFallback({
+      description: story?.description ?? null,
+      story_text: story?.story_text ?? null,
+    });
+
+    const update: {
+      is_public: boolean;
+      status: string;
+      cover_url?: string;
+      description?: string | null;
+    } = {
+      is_public: true,
+      status: "published",
+    };
+    if (firstPanel?.image_url) update.cover_url = firstPanel.image_url;
+    if (description) update.description = description;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("stories")
+      .update(update)
+      .eq("id", project.story_id);
+    if (updateError) throw new Error(updateError.message);
+
+    return { ok: true, storyId: project.story_id };
   });
