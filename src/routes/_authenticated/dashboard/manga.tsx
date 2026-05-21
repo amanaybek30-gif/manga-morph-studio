@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { generateManga } from "@/lib/manga.functions";
+import { generateManga, publishMangaStory } from "@/lib/manga.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard/manga")({
   component: MangaList,
@@ -20,7 +20,7 @@ type Row = {
   art_style: string | null;
   panel_count: number;
   created_at: string;
-  story: { id: string; title: string; genre: string | null } | null;
+  story: { id: string; title: string; genre: string | null; is_public: boolean; status: string } | null;
 };
 
 function MangaList() {
@@ -30,12 +30,13 @@ function MangaList() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const runGen = useServerFn(generateManga);
+  const publishStory = useServerFn(publishMangaStory);
 
   const load = async () => {
     if (!user) return;
     const { data } = await supabase
       .from("manga_projects")
-      .select("id,status,progress,art_style,panel_count,created_at,story:stories(id,title,genre)")
+      .select("id,status,progress,art_style,panel_count,created_at,story:stories(id,title,genre,is_public,status)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     setRows((data ?? []) as unknown as Row[]);
@@ -62,6 +63,19 @@ function MangaList() {
       load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handlePublish = async (id: string) => {
+    setBusy(id);
+    try {
+      await publishStory({ data: { projectId: id } });
+      toast.success("Story published to the home page and Explore Stories.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Publishing failed");
     } finally {
       setBusy(null);
     }
