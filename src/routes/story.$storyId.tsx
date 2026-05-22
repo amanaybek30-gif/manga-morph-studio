@@ -130,40 +130,42 @@ function PublicStory() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-8 max-w-3xl mx-auto">
                   {panels.map((p, i) => (
                     <motion.div
                       key={p.id}
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-4 items-stretch"
+                      className="relative glass-panel rounded-2xl overflow-hidden shadow-soft aspect-square bg-muted"
                     >
-                      <div className="glass-panel rounded-2xl overflow-hidden shadow-soft aspect-square bg-muted relative">
-                        {p.image_url ? (
-                          <img
-                            src={p.image_url}
-                            alt={`Scene ${p.panel_number}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
-                            <ImageIcon className="h-8 w-8 text-primary" /> Scene image unavailable
+                      {p.image_url ? (
+                        <img
+                          src={p.image_url}
+                          alt={`Scene ${p.panel_number}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+                          <ImageIcon className="h-8 w-8 text-primary" /> Scene image unavailable
+                        </div>
+                      )}
+                      <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-background/90 text-xs font-mono shadow">
+                        #{p.panel_number}
+                      </div>
+                      {p.dialogue && (
+                        <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:max-w-[70%]">
+                          <div className="relative inline-block rounded-2xl rounded-bl-sm bg-white/95 text-neutral-900 px-4 py-3 text-sm leading-snug shadow-xl ring-1 ring-black/10 font-medium">
+                            <MessageCircle className="absolute -top-2 -left-2 h-4 w-4 text-primary bg-background rounded-full p-0.5" />
+                            <span className="block">{`“${p.dialogue}”`}</span>
+                            <span
+                              aria-hidden
+                              className="absolute -bottom-2 left-6 w-4 h-4 bg-white/95 rotate-45 ring-1 ring-black/10"
+                            />
                           </div>
-                        )}
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-background/90 text-xs font-mono">
-                          #{p.panel_number}
                         </div>
-                      </div>
-                      <div className="glass-panel rounded-2xl p-5 shadow-soft flex flex-col justify-center">
-                        <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-primary mb-3">
-                          <MessageCircle className="h-4 w-4" /> Scene {p.panel_number}
-                        </div>
-                        <div className="rounded-2xl rounded-tl-sm border border-border bg-card p-4 text-sm leading-relaxed shadow-soft">
-                          {p.dialogue ? `“${p.dialogue}”` : "…"}
-                        </div>
-                      </div>
+                      )}
                     </motion.div>
                   ))}
                 </div>

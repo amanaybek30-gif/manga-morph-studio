@@ -123,60 +123,36 @@ Return JSON: {"scenes":[{"scene":"vivid anime visual description","dialogue":"sh
   }));
 }
 
-/** Replicate — high-quality colored anime image generation. */
+/** Lovable AI Gateway — colored anime image generation via Gemini 2.5 Flash Image. */
 async function generateSceneImage(prompt: string): Promise<Uint8Array> {
-  const token = process.env.REPLICATE_API_TOKEN;
-  if (!token) throw new Error("REPLICATE_API_TOKEN not configured");
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
-  // Using flux-schnell: fast, high-quality, follows complex prompts well.
-  const res = await fetch(
-    "https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Prefer: "wait=60",
-      },
-      body: JSON.stringify({
-        input: {
-          prompt,
-          aspect_ratio: "1:1",
-          output_format: "png",
-          num_outputs: 1,
-          num_inference_steps: 4,
-          disable_safety_checker: true,
-        },
-      }),
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content: prompt }],
+      modalities: ["image", "text"],
+    }),
+  });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Replicate ${res.status}: ${text.slice(0, 300)}`);
+    if (res.status === 429) throw new Error("Image rate limit exceeded — retry shortly.");
+    if (res.status === 402)
+      throw new Error("AI credits exhausted — top up in Workspace Settings.");
+    throw new Error(`Image gateway ${res.status}: ${text.slice(0, 300)}`);
   }
-  let prediction = await res.json();
-
-  // If still processing, poll
-  let tries = 0;
-  while (prediction.status !== "succeeded" && prediction.status !== "failed" && tries < 60) {
-    await new Promise((r) => setTimeout(r, 2000));
-    const poll = await fetch(prediction.urls.get, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    prediction = await poll.json();
-    tries++;
-  }
-  if (prediction.status !== "succeeded") {
-    throw new Error(`Replicate failed: ${prediction.error ?? prediction.status}`);
-  }
-  const url: string | undefined = Array.isArray(prediction.output)
-    ? prediction.output[0]
-    : prediction.output;
-  if (!url) throw new Error("Replicate returned no image URL");
-
-  const imgRes = await fetch(url);
-  if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`);
-  return new Uint8Array(await imgRes.arrayBuffer());
+  const json = await res.json();
+  const dataUrl: string | undefined =
+    json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  if (!dataUrl) throw new Error("Image model returned no image");
+  const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+  return Uint8Array.from(Buffer.from(base64, "base64"));
 }
 
 export const generateManga = createServerFn({ method: "POST" })
@@ -332,4 +308,50 @@ export const publishMangaStory = createServerFn({ method: "POST" })
     if (updateError) throw new Error(updateError.message);
 
     return { ok: true, storyId: project.story_id };
+  });
+
+/** Find the latest manga project for a story (owned by the user) and return its id for regeneration. */
+export const regenerateStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ storyId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: project } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id")
+      .eq("story_id", data.storyId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!project) throw new Error("No manga project found for this story");
+    return { ok: true, projectId: project.id };
+  });
+
+/** Delete a story and all derived data owned by the user. */
+export const deleteStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ storyId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: story } = await supabaseAdmin
+      .from("stories")
+      .select("id,user_id")
+      .eq("id", data.storyId)
+      .maybeSingle();
+    if (!story || story.user_id !== userId) throw new Error("Story not found");
+
+    const { data: projects } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id")
+      .eq("story_id", data.storyId);
+    const projectIds = (projects ?? []).map((p) => p.id);
+    if (projectIds.length) {
+      await supabaseAdmin.from("generated_panels").delete().in("project_id", projectIds);
+      await supabaseAdmin.from("manga_projects").delete().in("id", projectIds);
+    }
+    await supabaseAdmin.from("characters").delete().eq("story_id", data.storyId);
+    const { error } = await supabaseAdmin.from("stories").delete().eq("id", data.storyId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
