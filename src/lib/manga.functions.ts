@@ -309,3 +309,49 @@ export const publishMangaStory = createServerFn({ method: "POST" })
 
     return { ok: true, storyId: project.story_id };
   });
+
+/** Find the latest manga project for a story (owned by the user) and return its id for regeneration. */
+export const regenerateStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ storyId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: project } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id")
+      .eq("story_id", data.storyId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!project) throw new Error("No manga project found for this story");
+    return { ok: true, projectId: project.id };
+  });
+
+/** Delete a story and all derived data owned by the user. */
+export const deleteStory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ storyId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: story } = await supabaseAdmin
+      .from("stories")
+      .select("id,user_id")
+      .eq("id", data.storyId)
+      .maybeSingle();
+    if (!story || story.user_id !== userId) throw new Error("Story not found");
+
+    const { data: projects } = await supabaseAdmin
+      .from("manga_projects")
+      .select("id")
+      .eq("story_id", data.storyId);
+    const projectIds = (projects ?? []).map((p) => p.id);
+    if (projectIds.length) {
+      await supabaseAdmin.from("generated_panels").delete().in("project_id", projectIds);
+      await supabaseAdmin.from("manga_projects").delete().in("id", projectIds);
+    }
+    await supabaseAdmin.from("characters").delete().eq("story_id", data.storyId);
+    const { error } = await supabaseAdmin.from("stories").delete().eq("id", data.storyId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
